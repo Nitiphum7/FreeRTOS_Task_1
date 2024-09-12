@@ -6,36 +6,51 @@
 #include "freertos/task.h"
 
 TaskHandle_t MyFirstTaskHandle = NULL;
-// 1. เพิ่ม MySeconeTaskHandle
-TaskHandle_t MySeconeTaskHandle = NULL;
+TaskHandle_t MySecondTaskHandle = NULL; // แก้ไขชื่อจาก MySeconeTaskHandle เป็น MySecondTaskHandle
 
 void My_First_Task(void * arg)
 {
-	uint16_t i = 0;
-	while(1)
-	{
-		printf("Hello My First Task %d\n",i);
-		vTaskDelay(1000/portTICK_PERIOD_MS);
-		i++;
-	}
+    uint16_t i = 0;
+    while(1)
+    {
+        printf("Hello My First Task %d\n", i);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        i++;
+
+        if(i == 5)
+        {
+            if(MySecondTaskHandle != NULL) // ตรวจสอบว่า task ถูกสร้างหรือไม่
+            {
+                vTaskDelete(MySecondTaskHandle);
+                MySecondTaskHandle = NULL; // ตั้งค่าเป็น NULL หลังจากลบ task
+                printf("Second Task deleted\n");
+            }
+        }
+    }
 }
 
-// 2. เพิ่ม task function
 void My_Second_Task(void * arg)
 {
-	uint16_t i = 0;
-	while(1)
-	{
-		printf("Hello My Second Task %d\n",i);
-		vTaskDelay(1000/portTICK_PERIOD_MS);
-		i++;
-	}
+    uint16_t i = 0;
+    while(1)
+    {
+        printf("Hello My Second Task %d\n", i);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        i++;
+    }
 }
-
 
 void app_main(void)
 {
-	xTaskCreate(My_First_Task, "Fitst_Task", 4096, NULL, 10, &MyFirstTaskHandle);
-	// สร้างและเรียกใช้ task ด้วยฟังก์ชัน xTaskCreatePinnedToCore
-	xTaskCreatePinnedToCore(My_Second_Task, "Second_Task", 4096, NULL, 10, &MySeconeTaskHandle, 1);
+    // สร้าง My_First_Task
+    if(xTaskCreate(My_First_Task, "First_Task", 4096, NULL, 10, &MyFirstTaskHandle) != pdPASS)
+    {
+        printf("Failed to create My_First_Task\n");
+    }
+    
+    // สร้าง My_Second_Task และกำหนดให้รันบน Core 1
+    if(xTaskCreatePinnedToCore(My_Second_Task, "Second_Task", 4096, NULL, 10, &MySecondTaskHandle, 1) != pdPASS)
+    {
+        printf("Failed to create My_Second_Task\n");
+    }
 }
