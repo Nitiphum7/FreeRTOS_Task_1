@@ -21,10 +21,34 @@ void My_First_Task(void * arg)
         {
             if(MySecondTaskHandle != NULL) // ตรวจสอบว่า task ถูกสร้างหรือไม่
             {
+                vTaskSuspend(MySecondTaskHandle);
+                printf("Second Task suspended\n");
+            }
+        }
+
+        if(i == 10)
+        {
+            if(MySecondTaskHandle != NULL) // ตรวจสอบว่า task ถูกสร้างหรือไม่
+            {
+                vTaskResume(MySecondTaskHandle);
+                printf("Second Task resumed\n");
+            }
+        }
+
+        if(i == 15)
+        {
+            if(MySecondTaskHandle != NULL) // ตรวจสอบว่า task ถูกสร้างหรือไม่
+            {
                 vTaskDelete(MySecondTaskHandle);
                 MySecondTaskHandle = NULL; // ตั้งค่าเป็น NULL หลังจากลบ task
                 printf("Second Task deleted\n");
             }
+        }
+
+        if(i == 20)
+        {
+            printf("MyFirstTaskHandle will suspend itself\n");
+            vTaskSuspend(NULL); // ระงับตัวเอง
         }
     }
 }
