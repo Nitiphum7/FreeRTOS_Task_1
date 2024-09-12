@@ -1,12 +1,34 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include <unistd.h>
-
+#include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 TaskHandle_t MyFirstTaskHandle = NULL;
-TaskHandle_t MySecondTaskHandle = NULL; // แก้ไขชื่อจาก MySeconeTaskHandle เป็น MySecondTaskHandle
+TaskHandle_t MySecondTaskHandle = NULL;
+TaskHandle_t ISR = NULL;
+
+#define LED_PIN 27         
+#define PUSH_BUTTON_PIN 33
+
+void interrupt_task(void *arg)
+{
+    bool led_status = false;
+    while(1)
+    {
+        vTaskSuspend(NULL);
+        led_status = !led_status;
+        gpio_set_level(LED_PIN, led_status);
+        printf("Button pressed!\n");
+    }
+}
+
+void IRAM_ATTR button_isr_handler(void *arg)
+{
+    BaseType_t higherPriorityTaskWoken = pdFALSE;
+    xTaskResumeFromISR(ISR);
+    portYIELD_FROM_ISR(higherPriorityTaskWoken);
+}
 
 void My_First_Task(void * arg)
 {
@@ -66,13 +88,26 @@ void My_Second_Task(void * arg)
 
 void app_main(void)
 {
-    // สร้าง My_First_Task
+    esp_rom_gpio_pad_select_gpio(LED_PIN);
+    esp_rom_gpio_pad_select_gpio(PUSH_BUTTON_PIN);
+
+    gpio_set_direction(LED_PIN, GPIO_MODE_OUTPUT);
+    gpio_set_direction(PUSH_BUTTON_PIN, GPIO_MODE_INPUT);
+
+    gpio_set_intr_type(PUSH_BUTTON_PIN, GPIO_INTR_POSEDGE);
+
+    gpio_install_isr_service(0);
+
+    gpio_isr_handler_add(PUSH_BUTTON_PIN, button_isr_handler, NULL);
+
+    // สร้าง tasks
+    xTaskCreate(interrupt_task, "interrupt_task", 4096, NULL, 10, &ISR);
+    
     if(xTaskCreate(My_First_Task, "First_Task", 4096, NULL, 10, &MyFirstTaskHandle) != pdPASS)
     {
         printf("Failed to create My_First_Task\n");
     }
     
-    // สร้าง My_Second_Task และกำหนดให้รันบน Core 1
     if(xTaskCreatePinnedToCore(My_Second_Task, "Second_Task", 4096, NULL, 10, &MySecondTaskHandle, 1) != pdPASS)
     {
         printf("Failed to create My_Second_Task\n");
